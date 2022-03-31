@@ -78,7 +78,7 @@ class Application(tk.Frame):
 
         # # --- 部品定義 ------------------------------------- 
         # # 相手
-        self.you_lbl = tk.Label(f2, text="相手", font=f.Font(weight="bold"))
+        self.you_lbl = tk.Label(f2, text="送信", font=f.Font(weight="bold"))
         self.you_lg_lbl = tk.Label(f2, text="■相手のIPアドレス")
         self.you_ip_lbl = tk.Label(f2,text="IPアドレス")
         self.you_ip_inpt = tk.Entry(f2,textvariable=self.getIp())
