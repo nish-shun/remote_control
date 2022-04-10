@@ -21,6 +21,7 @@ class Application(tk.Frame):
         self.row = 0
 
         # ソケット
+        self.socket_me  = socket.socket(socket.AF_INET, type=socket.SOCK_DGRAM)
         self.socket_you  = socket.socket(socket.AF_INET, type=socket.SOCK_DGRAM)
 
         # ウィジェット描画
@@ -49,11 +50,7 @@ class Application(tk.Frame):
         self.me_glb_ip_inpt = tk.Entry(f1,textvariable="", state='readonly')
         self.me_glb_pt_lbl = tk.Label(f1,text="ポート番号")
         self.me_glb_pt_inpt = tk.Entry(f1,textvariable=tk.StringVar(), state='readonly')
-        f1_1 = tk.Frame(f1)
-        self.me_nw_stt_btn = tk.Button(f1_1,text="サーバ起動", command=self.start_server_thread)
-        self.me_nw_stp_btn = tk.Button(f1_1,text="サーバ停止", command=self.stop_server)
-        self.me_sv_sts_lbl = tk.Label(f1, text="サーバステータス：")
-        self.me_sv_sts_val = tk.Label(f1, text="停止中")
+        self.me_nw_stt_btn = tk.Button(f1,text="UDPサーバ起動",command=self.start_server_thread)
         self.me_msg_dsp_lbl = tk.Label(f1, text="■受信メッセージ")
         self.me_msg_dsp_txt = tk.Text(f1, bg="#f0f0f0", height=6, width=32 )
 
@@ -69,11 +66,7 @@ class Application(tk.Frame):
         self.me_glb_ip_inpt.grid(row=self.rowInc(), column=1, sticky=tk.EW)
         self.me_glb_pt_lbl.grid(row=self.rowInc(True), column=0, sticky=tk.W)
         self.me_glb_pt_inpt.grid(row=self.rowInc(), column=1, sticky=tk.EW)
-        f1_1.grid(row=self.rowInc(True), column=0, columnspan=2, sticky=tk.EW)
-        self.me_nw_stt_btn.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        self.me_nw_stp_btn.pack(side=tk.RIGHT, fill=tk.X, expand=True)
-        self.me_sv_sts_lbl.grid(row=self.rowInc(True), column=0, sticky=tk.W)
-        self.me_sv_sts_val.grid(row=self.rowInc(), column=1, sticky=tk.W)
+        self.me_nw_stt_btn.grid(row=self.rowInc(True), column=0, columnspan=2, sticky=tk.EW)
         self.me_msg_dsp_lbl.grid(row=self.rowInc(True), column=0, columnspan=2, sticky=tk.W)
         self.me_msg_dsp_txt.grid(row=self.rowInc(True), column=0, columnspan=2, sticky=tk.NSEW)
 
@@ -96,6 +89,7 @@ class Application(tk.Frame):
         self.you_msg_send_btn = tk.Button(f2,text="メッセージ送信",command=self.send)
 
         # # --- レイアウト ------------------------------------- 
+   
         # # 相手
         self.you_lbl.grid(row=self.rowInc(True), sticky=tk.W)
         self.you_lg_lbl.grid(row=self.rowInc(True), column=0, sticky=tk.W)
@@ -150,81 +144,49 @@ class Application(tk.Frame):
     #
     def start_server(self):
 
-        try:
+        # UDPサーバ起動
+        locaaddr = (self.me_lcl_ip_inpt.get(), int(self.me_lcl_pt_inpt.get()))
+        self.socket_me.bind(locaaddr)
 
-            # ソケット作成
-            self.socket_me  = socket.socket(socket.AF_INET, type=socket.SOCK_DGRAM) 
+        # グローバルIPアドレスの自動入力
+        topology, ext_ip, ext_port = get_ip_info(source_ip=self.me_lcl_ip_inpt.get(),source_port=int(self.me_lcl_pt_inpt.get()),stun_host="stun.l.google.com",stun_port=19302,sock=self.socket_me)
+        self.me_glb_ip_inpt["state"] = tk.NORMAL
+        self.me_glb_pt_inpt["state"] = tk.NORMAL
+        self.me_glb_ip_inpt.insert(0, ext_ip)
+        self.me_glb_pt_inpt.insert(0, ext_port)
+        self.me_glb_ip_inpt["state"] = tk.DISABLED
+        self.me_glb_pt_inpt["state"] = tk.DISABLED
 
-            # UDPサーバ起動
-            locaaddr = (self.me_lcl_ip_inpt.get(), int(self.me_lcl_pt_inpt.get()))
-            self.socket_me.bind(locaaddr)
+        while True:
+            try :
+                # Clientからのmessageの受付開始
+                print('Waiting message')
 
-            self.is_server_start = True
-            self.me_sv_sts_val['text'] = "起動中"
+                message, cli_addr = self.socket_me.recvfrom(1024)
+                message = message.decode(encoding='utf-8')
 
-            # グローバルIPアドレスの自動入力
-            topology, ext_ip, ext_port = get_ip_info(source_ip=self.me_lcl_ip_inpt.get(),source_port=int(self.me_lcl_pt_inpt.get()),stun_host="stun.l.google.com",stun_port=19302,sock=self.socket_me)
-            self.me_glb_ip_inpt["state"] = tk.NORMAL
-            self.me_glb_pt_inpt["state"] = tk.NORMAL
-            self.me_glb_ip_inpt.insert(0, ext_ip)
-            self.me_glb_pt_inpt.insert(0, ext_port)
-            self.me_glb_ip_inpt["state"] = tk.DISABLED
-            self.me_glb_pt_inpt["state"] = tk.DISABLED
+                #受信メッセージのセット
+                self.me_msg_dsp_txt["state"] = tk.NORMAL
+                self.me_msg_dsp_txt.insert("end", message)
+                self.me_msg_dsp_txt["state"] = tk.DISABLED
+                
+                # Clientが受信待ちになるまで待つため
+                # time.sleep(1)
 
-            while True:
-                    # Clientからのmessageの受付開始
-                    print('Waiting message')
+                # # Clientへ受信完了messageを送信
+                # print('Send response to Client')
+                # self.socket_me.sendto('Success to receive message'.encode(encoding='utf-8'), cli_addr)
 
-                    message, cli_addr = self.socket_me.recvfrom(1024)
-                    message = message.decode(encoding='utf-8')
-
-                    if not self.is_server_start:
-                        break
-
-                    #受信メッセージのセット
-                    self.me_msg_dsp_txt["state"] = tk.NORMAL
-                    self.me_msg_dsp_txt.insert("end", message)
-                    self.me_msg_dsp_txt["state"] = tk.DISABLED
-                    
-                    # Clientが受信待ちになるまで待つため
-                    # time.sleep(1)
-
-                    # # Clientへ受信完了messageを送信
-                    # print('Send response to Client')
-                    # self.socket_me.sendto('Success to receive message'.encode(encoding='utf-8'), cli_addr)
-
-        except:
-            if self.is_server_start:
-                self.socket_me.shutdown(socket.SHUT_WR)
+            except KeyboardInterrupt:
                 self.socket_me.close()
-                self.is_server_start = False
+                break
 
     #
     # サーバ停止
     #
-    def stop_server(self):
-
-        socket_tmp = socket.socket(socket.AF_INET, type=socket.SOCK_DGRAM)
-
-        servaddr = (self.me_lcl_ip_inpt.get(), int(self.me_lcl_pt_inpt.get()))
-        self.is_server_start = False
-        self.me_sv_sts_val['text'] = "停止中"
-        socket_tmp.sendto(self.you_msg_inpt.get("1.0", "end").encode('utf-8'), servaddr)
-        
-        socket_tmp.shutdown(socket.SHUT_WR)
-        socket_tmp.close()
-
-    #
-    # ソケットクローズ
-    #
     def close_socket(self):
-        if self.is_server_start:
-            # shutdownをしないとrecvfrom()で落ちます。
-            self.socket_me.shutdown(socket.SHUT_WR)
-            self.socket_you.shutdown(socket.SHUT_WR)
-            self.socket_me.close()
-            self.socket_you.close()
-            self.is_server_start = False
+        self.socket_me.close();
+        self.socket_you.close();
 
 #
 # 実行
@@ -232,6 +194,6 @@ class Application(tk.Frame):
 def main():
     app = Application()
     app.mainloop()
-    app.close_socket()
+    app.close_socket();
 
 main()
