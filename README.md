@@ -26,3 +26,9 @@ TCP、UDP通信に関するコード部品です。
 - Pythonによるソケットプログラミング(UDP編)  
   https://qiita.com/note-tech/items/c3e1e497d231ea1e7ca7
 
+- 【Python】マイクの音を録音してwaveファイルに保存
+  https://algorithm.joho.info/programming/python/pyaudio-record/
+
+- pyaudioを使って録音・再生してみよう！【pythonで音響信号処理】
+  https://moromisenpy.com/pyaudio/
+
