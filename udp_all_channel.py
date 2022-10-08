@@ -12,23 +12,23 @@ class App :
     """ App """
 
     # 送信先IP・ポート
-    send_ip = "192.168.0.12"
-    send_txt_port = 42001
-    send_mic_port = 42002
-    send_video_port = 42003
+    send_ip = "192.168.0.9"
+    send_txt_port = 8890
+    send_mic_port = 8891
+    send_video_port = 8892
 
-    # 受信IP・ポート
-    receive_txt_port = 42001
-    receive_mic_port = 42002
-    receive_video_port = 42003
+    # 受信ポート
+    receive_txt_port = 8893
+    receive_mic_port = 8894
+    receive_video_port = 8895
 
     # PyAudio設定
     fmt = pyaudio.paInt16  # 音声のフォーマット
-    ch = 1              # チャンネル1(モノラル)
+    ch = 1 # チャンネル1(モノラル)
     sampling_rate = 44100 # サンプリング周波数
-    chunk = 2**11       # チャンク（データ点数）
+    chunk = 2**8 # チャンク（データ点数）。大きすぎるとaudio.openでinput_overflowのエラーになる。べき指数を小さくすればいい。
     audio = pyaudio.PyAudio()
-    index = 1 # 録音デバイスのインデックス番号（デフォルト1）
+    index = 1 # 録音デバイスのインデックス番号（デフォルト1）。マイクでインデックスを指定するとエラーになる。
 
     # 受信VIDEO設定
     BUF = 100000
@@ -36,6 +36,7 @@ class App :
     # 送信カメラ情報
     D_WIDTH = 170
     D_HEIGHT = 120
+    EXTENSION = ".png" #.jpgにしないと動かない事もあった。UDPのsend_toでエラーにならないから厄介。
 
     def __init__(self, ):
         """ コンストラクタ """
@@ -62,9 +63,9 @@ class App :
                                             frames_per_buffer=self.chunk)
         # 音声アウトプットストリーム
         self.output_stream = self.audio.open(format=self.fmt,
-                                          channels=self.ch,
-                                          rate=self.sampling_rate,
-                                          output=True)
+                                             channels=self.ch,
+                                             rate=self.sampling_rate,
+                                             output=True)
         # 映像キャプチャー
         self.cap = cv2.VideoCapture(0)
 
@@ -83,6 +84,7 @@ class App :
 
     def receive_txt(self):
         """【テキスト】受信サーバ起動 """
+
         print("txt receive start")
         try:
             while True:
@@ -99,6 +101,7 @@ class App :
         try:
             while True:
                 data, client_addr = self.receive_mic_socket.recvfrom(8192)
+                # print("sound!")
                 self.output_stream.write(data)
         except: # pylint: disable=bare-except
             pass
@@ -110,6 +113,7 @@ class App :
         try:
             while True :
                 data, client_addr = self.receive_video_socket.recvfrom(self.BUF)
+                # print("video!")
                 # 画像データをデコードする
                 narray = np.frombuffer(data, dtype='uint8')
                 data = cv2.imdecode(narray, 1)
@@ -122,6 +126,7 @@ class App :
 
     def send_mic(self):
         """【音声】送信処理起動 """
+
         print("mic send start")
         try:
             while True:
@@ -132,17 +137,18 @@ class App :
 
     def send_video(self):
         """【映像】送信処理起動 """
+
         print("video send start")
         # FPSを落とします
         # カメラが対応していないと、setがTrueを返しても変わりません。
-        print('FPS変更：{}'.format(self.cap.set(cv2.CAP_PROP_FPS, 10)))
-        print('FPS：{}'.format(self.cap.get(cv2.CAP_PROP_FPS)))
+        print(f'FPS変更:{self.cap.set(cv2.CAP_PROP_FPS, 10)}')
+        print(f'FPS:{self.cap.get(cv2.CAP_PROP_FPS)}')
 
         while (self.cap.isOpened()):
             ret, data = self.cap.read()
             data = cv2.resize(data, dsize=(self.D_WIDTH, self.D_HEIGHT))
             # 転送するために画像データをエンコードする -------------------------
-            img_encode = cv2.imencode('.png', data)[1]
+            img_encode = cv2.imencode(self.EXTENSION, data)[1]
             data_encode = np.array(img_encode)
             data = data_encode.tobytes()
             # データを送る:
@@ -180,7 +186,7 @@ class App :
     def exec(self):
         """ 実行 """
 
-        # 受信サーバー起動
+        # スレッド起動
         self.start_threads()
 
         # 送信テキスト入力
