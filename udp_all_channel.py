@@ -12,12 +12,13 @@ class App :
     """ App """
 
     # 送信先IP・ポート
-    send_ip = "219.124.179.218"
-    send_txt_port = 8890
-    send_mic_port = 8891
-    send_video_port = 8892
+    send_ip = "192.168.0.7"
+    send_txt_port = 8893
+    send_mic_port = 8894
+    send_video_port = 8895
 
     # 受信ポート
+    receive_ip = "192.168.0.12"
     receive_txt_port = 8890
     receive_mic_port = 8891
     receive_video_port = 8892
@@ -38,8 +39,6 @@ class App :
     D_HEIGHT = 120
     EXTENSION = ".png" #.jpgにしないと動かない事もあった。UDPのsend_toでエラーにならないから厄介。
 
-    print("local:" + socket.gethostbyname(socket.gethostname()))
-
     def __init__(self, ):
         """ コンストラクタ """
 
@@ -49,13 +48,13 @@ class App :
         self.send_video_socket  = socket.socket(socket.AF_INET, type=socket.SOCK_DGRAM)
         # 【テキスト】受信ソケット
         self.receive_txt_socket  = socket.socket(socket.AF_INET, type=socket.SOCK_DGRAM)
-        self.receive_txt_socket.bind((socket.gethostname(), self.receive_txt_port))
+        self.receive_txt_socket.bind((self.receive_ip, self.receive_txt_port))
         # 【音声】受信ソケット
         self.receive_mic_socket  = socket.socket(socket.AF_INET, type=socket.SOCK_DGRAM)
-        self.receive_mic_socket.bind((socket.gethostname(), self.receive_mic_port))
+        self.receive_mic_socket.bind((self.receive_ip, self.receive_mic_port))
         # 【映像】受信ソケット
         self.receive_video_socket  = socket.socket(socket.AF_INET, type=socket.SOCK_DGRAM)
-        self.receive_video_socket.bind((socket.gethostname(), self.receive_video_port))
+        self.receive_video_socket.bind((self.receive_ip, self.receive_video_port))
         # 音声インプットストリーム
         self.input_stream = self.audio.open(format=self.fmt,
                                             channels=self.ch,
@@ -119,7 +118,7 @@ class App :
                 # 画像データをデコードする
                 narray = np.frombuffer(data, dtype='uint8')
                 data = cv2.imdecode(narray, 1)
-                cv2.imshow('映像', data)
+                cv2.imshow('video', data) # winnameは日本語にした方が無難。文字化け＋真っ黒の時あった。
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     print ("quit")
                     break
@@ -132,7 +131,7 @@ class App :
         print("mic send start")
         try:
             while True:
-                data = self.input_stream.read(self.chunk)
+                data = self.input_stream.read(self.chunk, exception_on_overflow=False) # Falseにしないと「Input overflow」で落ちる
                 self.send_mic_socket.sendto(data, (self.send_ip, self.send_mic_port))
         except : # pylint: disable=bare-except
             pass
@@ -155,9 +154,10 @@ class App :
             data = data_encode.tobytes()
             # データを送る:
             self.send_video_socket.sendto(data,(self.send_ip, self.send_video_port))
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                print ("quit")
-                break
+            # このwaitKeyをコメントアウトしたら「QObject::startTimer: Timers cannot be started from another thread」が出なくなった...。
+            # if cv2.waitKey(1) & 0xFF == ord('q'):
+            #     print ("quit")
+            #     break
 
     def close(self):
         """ クローズ処理 """
