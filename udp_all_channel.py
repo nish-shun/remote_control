@@ -12,7 +12,7 @@ class App :
     """ App """
 
     # 送信先IP・ポート
-    send_ip = "192.168.0.7"
+    send_ip = "192.168.0.12"
     send_txt_port = 8893
     send_mic_port = 8894
     send_video_port = 8895
@@ -37,7 +37,7 @@ class App :
     # 送信カメラ情報
     D_WIDTH = 160
     D_HEIGHT = 120
-    EXTENSION = ".png" #.jpgにしないと動かない事もあった。UDPのsend_toでエラーにならないから厄介。
+    # EXTENSION = ".png" #.jpgにしないと動かない事もあった。UDPのsend_toでエラーにならないから厄介。
 
     def __init__(self, ):
         """ コンストラクタ """
@@ -149,7 +149,8 @@ class App :
             ret, data = self.cap.read()
             data = cv2.resize(data, dsize=(self.D_WIDTH, self.D_HEIGHT))
             # 転送するために画像データをエンコードする -------------------------
-            img_encode = cv2.imencode(self.EXTENSION, data)[1]
+            # img_encode = cv2.imencode(self.EXTENSION, data)[1]
+            img_encode = cv2.imencode('.jpg', data, [int(cv2.IMWRITE_JPEG_QUALITY), 10])[1]
             data_encode = np.array(img_encode)
             data = data_encode.tobytes()
             # データを送る:
