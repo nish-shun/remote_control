@@ -12,17 +12,17 @@ class App :
     """ App """
 
     # 送信先IP・ポート
-    send_ip = "192.168.0.9"
+    send_ip = "219.124.179.218"
     send_txt_port = 8890
     send_mic_port = 8891
     send_video_port = 8892
 
     # 受信ポート
-    receive_txt_port = 8893
-    receive_mic_port = 8894
-    receive_video_port = 8895
+    receive_txt_port = 8890
+    receive_mic_port = 8891
+    receive_video_port = 8892
 
-    # PyAudio設定
+    # PyAudio（マイク）設定
     fmt = pyaudio.paInt16  # 音声のフォーマット
     ch = 1 # チャンネル1(モノラル)
     sampling_rate = 44100 # サンプリング周波数
@@ -34,9 +34,11 @@ class App :
     BUF = 100000
 
     # 送信カメラ情報
-    D_WIDTH = 170
+    D_WIDTH = 160
     D_HEIGHT = 120
     EXTENSION = ".png" #.jpgにしないと動かない事もあった。UDPのsend_toでエラーにならないから厄介。
+
+    print("local:" + socket.gethostbyname(socket.gethostname()))
 
     def __init__(self, ):
         """ コンストラクタ """
